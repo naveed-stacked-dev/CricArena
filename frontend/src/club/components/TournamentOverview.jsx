@@ -59,7 +59,7 @@ export default function TournamentOverview({ clubId, tournaments }) {
     fetchData();
 
     const isKnockout = selectedTournament.type === "knockout";
-    setActiveTab(isKnockout ? "bracket" : "points");
+    setActiveTab(isKnockout ? "bracket" : "teams");
   }, [selectedTournament]);
 
   const isKnockout = selectedTournament?.type === "knockout";
@@ -71,12 +71,12 @@ export default function TournamentOverview({ clubId, tournaments }) {
         { key: "timeline", label: "Timeline", icon: Clock },
       ]
     : [
-        { key: "points", label: hasGroups ? "Groups" : "Standings", icon: Trophy },
-        { key: "fixtures", label: "Fixtures", icon: Calendar },
         { key: "teams", label: "Teams", icon: Users },
         { key: "timeline", label: "Timeline", icon: Clock },
+        { key: "fixtures", label: "Upcoming Matches", icon: Calendar },
+        { key: "points", label: hasGroups ? "Groups" : "Standings", icon: Trophy },
       ];
-
+ 
   return (
     <div className="glass-surface p-5 space-y-4">
       {/* Tournament Selector */}

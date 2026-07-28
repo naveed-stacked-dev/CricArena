@@ -23,6 +23,9 @@ import ClubTeamsPage from "./club/pages/ClubTeamsPage";
 import ClubPlayersPage from "./club/pages/ClubPlayersPage";
 import ClubPostsPage from "./club/pages/ClubPostsPage";
 import ClubGalleryPage from "./club/pages/ClubGalleryPage";
+import ClubAlbumsPage from "./club/pages/ClubAlbumsPage";
+import ClubRuleBookPage from "./club/pages/ClubRuleBookPage";
+import ClubAnalyticsPage from "./club/pages/ClubAnalyticsPage";
 import ClubMatchDetailPage from "./club/pages/ClubMatchDetailPage";
 import ClubPlayerProfilePage from "./club/pages/ClubPlayerProfilePage";
 import ClubTeamDetailPage from "./club/pages/ClubTeamDetailPage";
@@ -74,6 +77,9 @@ export default function App() {
           <Route path="players" element={<ClubPlayersPage />} />
           <Route path="posts" element={<ClubPostsPage />} />
           <Route path="gallery" element={<ClubGalleryPage />} />
+          <Route path="albums" element={<ClubAlbumsPage />} />
+          <Route path="rulebook" element={<ClubRuleBookPage />} />
+          <Route path="analytics" element={<ClubAnalyticsPage />} />
           <Route path="matches/:matchId" element={<ClubMatchDetailPage />} />
           <Route path="players/:playerId" element={<ClubPlayerProfilePage />} />
           <Route path="teams/:teamId" element={<ClubTeamDetailPage />} />

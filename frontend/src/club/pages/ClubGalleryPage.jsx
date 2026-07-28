@@ -27,9 +27,7 @@ export default function ClubGalleryPage() {
       .then((res) => {
         const data = res.data?.data || [];
         setTournaments(data);
-        if (data.length > 0 && !filterTournament) {
-          setFilterTournament(data[0]._id);
-        }
+        // Default stays "" (All Tournaments) — no auto-select
       })
       .catch(() => {});
   }, [clubId]);

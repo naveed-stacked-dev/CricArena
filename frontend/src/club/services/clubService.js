@@ -43,6 +43,14 @@ const clubService = {
   getSponsors: (clubId) => apiClient.get(`/content/${clubId}/sponsors`),
   getPosts: (clubId, params) => apiClient.get(`/content/${clubId}/posts`, { params }),
   getGallery: (clubId, params) => apiClient.get(`/content/${clubId}/gallery`, { params }),
+
+  // ─── Documents / Rule Book ───
+  getDocuments: (clubId, params) => apiClient.get(`/documents/${clubId}`, { params }),
+
+  // ─── Analytics ───
+  getLeaderboard: (clubId, params) => apiClient.get(`/analytics/leaderboard/${clubId}`, { params }),
+  getMatchAnalytics: (matchId) => apiClient.get(`/analytics/match/${matchId}`),
+  getMatchGraph: (matchId) => apiClient.get(`/analytics/match/${matchId}/graph`),
 };
 
 export default clubService;

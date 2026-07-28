@@ -162,6 +162,11 @@ export default function MatchesPage() {
     const tB = m.teamB?.name || "";
     const s = search.toLowerCase();
     return tA.toLowerCase().includes(s) || tB.toLowerCase().includes(s);
+  }).sort((a, b) => {
+    // If a match doesn't have a startTime, push it to the bottom
+    if (!a.startTime) return 1;
+    if (!b.startTime) return -1;
+    return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
   });
 
   const getStatusBadge = (m) => {
