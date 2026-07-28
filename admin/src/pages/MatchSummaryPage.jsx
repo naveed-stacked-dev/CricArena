@@ -4,11 +4,12 @@ import { motion } from "framer-motion";
 import { useAppContext } from "@/hooks/useAppContext";
 import matchService from "@/services/matchService";
 import scoringService from "@/services/scoringService";
+import analyticsService from "@/services/analyticsService";
 import authService from "@/services/authService";
 import { decodeId, encodeId } from "@/utils/crypto";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Loader2, Shield, Calendar, Zap, PlayCircle, KeyRound, Link as LinkIcon, Monitor, Play } from "lucide-react";
+import { ArrowLeft, Loader2, Shield, Calendar, Zap, PlayCircle, KeyRound, Link as LinkIcon, Monitor, Play, BarChart3, TrendingUp, Activity } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const item = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
@@ -28,6 +30,8 @@ export default function MatchSummaryPage() {
   const [match, setMatch] = useState(null);
   const [summaryData, setSummaryData] = useState(null);
   const [events, setEvents] = useState([]);
+  const [matchAnalytics, setMatchAnalytics] = useState(null);
+  const [matchGraph, setMatchGraph] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -58,6 +62,18 @@ export default function MatchSummaryPage() {
       }
     };
     if (matchId) fetchMatchAndSummary();
+  }, [matchId]);
+
+  // Fetch analytics separately so it doesn't block main load
+  useEffect(() => {
+    if (!matchId) return;
+    Promise.allSettled([
+      analyticsService.getMatchAnalytics(matchId),
+      analyticsService.getMatchGraph(matchId),
+    ]).then(([aRes, gRes]) => {
+      if (aRes.status === "fulfilled") setMatchAnalytics(aRes.value.data?.data || aRes.value.data || null);
+      if (gRes.status === "fulfilled") setMatchGraph(gRes.value.data?.data || gRes.value.data || null);
+    }).catch(() => {});
   }, [matchId]);
 
   const handleUpdateStream = async () => {
@@ -352,7 +368,92 @@ export default function MatchSummaryPage() {
       </motion.div>
     </motion.div>
 
-      {/* Update Stream URL Dialog */}
+      {/* ─── Analytics Section ─── */}
+      {(matchAnalytics || matchGraph) && (
+        <motion.div variants={item} className="mt-10 max-w-5xl mx-auto pb-4">
+          <h2 className="text-2xl font-bold tracking-tight mb-6 flex items-center gap-2" style={{ color: themeColor }}>
+            <BarChart3 className="w-6 h-6" /> Match Analytics
+          </h2>
+
+          {/* Worm Chart */}
+          {(matchGraph?.overByOver || []).length > 0 && (
+            <div className="border border-border/50 rounded-2xl bg-card overflow-hidden shadow-sm mb-6">
+              <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2" style={{ backgroundColor: `${themeColor}08` }}>
+                <TrendingUp className="w-4 h-4" style={{ color: themeColor }} />
+                <span className="font-semibold text-sm text-foreground">Over-by-Over Run Progression</span>
+              </div>
+              <div className="p-5 h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={(matchGraph.overByOver || []).map((o) => ({ over: `Ov ${o.over}`, firstInnings: o.firstInnings ?? 0, secondInnings: o.secondInnings ?? 0 }))}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="over" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
+                    <Legend wrapperStyle={{ fontSize: "12px" }} />
+                    <Line type="monotone" dataKey="firstInnings" name="1st Innings" stroke={themeColor} strokeWidth={2.5} dot={false} />
+                    <Line type="monotone" dataKey="secondInnings" name="2nd Innings" stroke="#f59e0b" strokeWidth={2.5} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* Top Performers */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Top Batsmen */}
+            <div className="border border-border/50 rounded-2xl bg-card overflow-hidden shadow-sm">
+              <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2" style={{ backgroundColor: `${themeColor}08` }}>
+                <Activity className="w-4 h-4" style={{ color: themeColor }} />
+                <span className="font-semibold text-sm text-foreground">Top Batsmen</span>
+              </div>
+              {(matchAnalytics?.topBatsmen || []).length === 0 ? (
+                <div className="py-10 text-center text-sm text-muted-foreground">No batting data yet</div>
+              ) : (matchAnalytics.topBatsmen || []).slice(0, 5).map((b, i) => (
+                <div key={i} className="flex items-center justify-between px-4 py-2.5 border-b border-border/50 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center text-white"
+                      style={{ backgroundColor: i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : `${themeColor}40` }}>
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="font-medium text-sm">{b.player?.name || b.name || "—"}</p>
+                      {b.player?.team?.name && <p className="text-xs text-muted-foreground">{b.player.team.name}</p>}
+                    </div>
+                  </div>
+                  <span className="font-bold text-base" style={{ color: themeColor }}>{b.runs || b.totalRuns || 0} <span className="text-xs opacity-60 font-normal">runs</span></span>
+                </div>
+              ))}
+            </div>
+
+            {/* Top Bowlers */}
+            <div className="border border-border/50 rounded-2xl bg-card overflow-hidden shadow-sm">
+              <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2" style={{ backgroundColor: `${themeColor}08` }}>
+                <Zap className="w-4 h-4 text-red-500" />
+                <span className="font-semibold text-sm text-foreground">Top Bowlers</span>
+              </div>
+              {(matchAnalytics?.topBowlers || []).length === 0 ? (
+                <div className="py-10 text-center text-sm text-muted-foreground">No bowling data yet</div>
+              ) : (matchAnalytics.topBowlers || []).slice(0, 5).map((b, i) => (
+                <div key={i} className="flex items-center justify-between px-4 py-2.5 border-b border-border/50 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center text-white"
+                      style={{ backgroundColor: i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "#ef444440" }}>
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="font-medium text-sm">{b.player?.name || b.name || "—"}</p>
+                      {b.player?.team?.name && <p className="text-xs text-muted-foreground">{b.player.team.name}</p>}
+                    </div>
+                  </div>
+                  <span className="font-bold text-base text-red-500">{b.wickets || b.totalWickets || 0} <span className="text-xs opacity-60 font-normal">wkts</span></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+
       <Dialog open={showStream} onOpenChange={setShowStream}>
         <DialogContent>
           <DialogHeader>

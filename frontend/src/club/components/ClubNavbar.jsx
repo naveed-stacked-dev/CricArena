@@ -1,5 +1,5 @@
 import { NavLink, Link, useParams, useNavigate } from "react-router-dom";
-import { Home, Swords, CalendarDays, Users, UserCircle, Plus } from "lucide-react";
+import { Home, Swords, CalendarDays, Users, UserCircle, Plus, Images, BookOpen, BarChart3 } from "lucide-react";
 
 const navItems = [
   { path: "", label: "Home", icon: Home, end: true },
@@ -7,6 +7,9 @@ const navItems = [
   { path: "matches", label: "Matches", icon: CalendarDays },
   { path: "teams", label: "Teams", icon: Users },
   { path: "players", label: "Players", icon: UserCircle },
+  { path: "gallery", label: "Albums", icon: Images },
+  { path: "rulebook", label: "Rule Book", icon: BookOpen },
+  { path: "analytics", label: "Analytics", icon: BarChart3 },
 ];
 
 /**

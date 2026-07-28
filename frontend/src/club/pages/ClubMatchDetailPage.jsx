@@ -6,9 +6,10 @@ import clubService from "../services/clubService";
 import {
   Radio, Loader2, Calendar, PlayCircle, Eye, ArrowLeft,
   Trophy, Activity, Clock, MapPin, Zap, ChevronRight,
-  ShieldAlert, Target, TrendingUp,
+  ShieldAlert, Target, TrendingUp, BarChart3,
 } from "lucide-react";
 import { decodeId } from "../../utils/crypto";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 export default function ClubMatchDetailPage() {
   const { matchId: rawMatchId, slug } = useParams();
@@ -133,6 +134,7 @@ export default function ClubMatchDetailPage() {
   const tabs = [
     { key: "scorecard", label: "Scorecard", icon: Activity },
     { key: "commentary", label: "Ball by Ball", icon: Zap },
+    { key: "analytics", label: "Analytics", icon: BarChart3 },
     { key: "stream", label: "Live Stream", icon: PlayCircle },
   ];
 
@@ -271,6 +273,12 @@ export default function ClubMatchDetailPage() {
                 </div>
               </div>
             )}
+          </motion.div>
+        )}
+
+        {tab === "analytics" && (
+          <motion.div key="analytics" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <MatchAnalyticsPanel matchId={match._id || matchId} />
           </motion.div>
         )}
 
@@ -491,6 +499,139 @@ function EventRow({ ev }) {
             `${ev.runs ?? 0} run${ev.runs !== 1 ? "s" : ""}`
           ))}
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Match Analytics Panel ─── */
+
+
+function MatchAnalyticsPanel({ matchId }) {
+  const [analytics, setAnalytics] = useState(null);
+  const [graph, setGraph] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!matchId) return;
+    setLoading(true);
+    Promise.allSettled([
+      clubService.getMatchAnalytics(matchId),
+      clubService.getMatchGraph(matchId),
+    ]).then(([aRes, gRes]) => {
+      if (aRes.status === "fulfilled") setAnalytics(aRes.value.data?.data || aRes.value.data || null);
+      if (gRes.status === "fulfilled") setGraph(gRes.value.data?.data || gRes.value.data || null);
+    }).finally(() => setLoading(false));
+  }, [matchId]);
+
+  if (loading) return (
+    <div className="space-y-3">
+      {[1, 2, 3].map((i) => <div key={i} className="skeleton h-24 rounded-2xl" />)}
+    </div>
+  );
+
+  if (!analytics && !graph) return (
+    <div className="glass-surface p-16 text-center">
+      <BarChart3 className="w-10 h-10 mx-auto mb-3 opacity-20" style={{ color: "var(--club-text-muted)" }} />
+      <p className="text-sm" style={{ color: "var(--club-text-muted)" }}>No analytics available for this match yet.</p>
+    </div>
+  );
+
+  // Build over-by-over data for chart
+  const overData = (graph?.overByOver || []).map((o) => ({
+    over: `Ov ${o.over}`,
+    firstInnings: o.firstInnings ?? 0,
+    secondInnings: o.secondInnings ?? 0,
+  }));
+
+  // Top performers
+  const topBatsmen = analytics?.topBatsmen || [];
+  const topBowlers = analytics?.topBowlers || [];
+
+  return (
+    <div className="space-y-5">
+      {/* Worm Chart */}
+      {overData.length > 0 && (
+        <div className="glass-surface p-5">
+          <h3 className="text-sm font-bold mb-4 flex items-center gap-2" style={{ color: "var(--club-text-main)" }}>
+            <TrendingUp className="w-4 h-4" style={{ color: "var(--club-primary)" }} />
+            Over-by-Over Run Progression
+          </h3>
+          <div className="h-52">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={overData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="over" tick={{ fill: "var(--club-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "var(--club-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "var(--club-surface)",
+                    border: "1px solid var(--club-border)",
+                    borderRadius: "10px",
+                    fontSize: "11px",
+                    color: "var(--club-text-main)",
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: "11px", color: "var(--club-text-muted)" }} />
+                <Line type="monotone" dataKey="firstInnings" name="1st Innings" stroke="var(--club-primary)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="secondInnings" name="2nd Innings" stroke="#f59e0b" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Top Batsmen & Bowlers */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Top Batsmen */}
+        <div className="glass-surface overflow-hidden">
+          <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: "var(--club-border)" }}>
+            <Activity className="w-4 h-4" style={{ color: "var(--club-primary)" }} />
+            <span className="text-sm font-bold" style={{ color: "var(--club-text-main)" }}>Top Batsmen</span>
+          </div>
+          {topBatsmen.length === 0 ? (
+            <div className="py-8 text-center text-sm" style={{ color: "var(--club-text-muted)" }}>No data yet</div>
+          ) : topBatsmen.slice(0, 5).map((b, i) => (
+            <div key={i} className="flex items-center justify-between px-4 py-2.5 border-b last:border-0" style={{ borderColor: "var(--club-border)" }}>
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
+                  style={{ backgroundColor: i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "var(--club-primary)" }}>
+                  {i + 1}
+                </span>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "var(--club-text-main)" }}>{b.player?.name || b.name || "—"}</p>
+                  {b.player?.team?.name && <p className="text-[10px]" style={{ color: "var(--club-text-muted)" }}>{b.player.team.name}</p>}
+                </div>
+              </div>
+              <span className="font-bold text-base" style={{ color: "var(--club-primary)" }}>{b.runs || b.totalRuns || 0} <span className="text-xs font-normal opacity-60">runs</span></span>
+            </div>
+          ))}
+        </div>
+
+        {/* Top Bowlers */}
+        <div className="glass-surface overflow-hidden">
+          <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: "var(--club-border)" }}>
+            <Zap className="w-4 h-4" style={{ color: "#ef4444" }} />
+            <span className="text-sm font-bold" style={{ color: "var(--club-text-main)" }}>Top Bowlers</span>
+          </div>
+          {topBowlers.length === 0 ? (
+            <div className="py-8 text-center text-sm" style={{ color: "var(--club-text-muted)" }}>No data yet</div>
+          ) : topBowlers.slice(0, 5).map((b, i) => (
+            <div key={i} className="flex items-center justify-between px-4 py-2.5 border-b last:border-0" style={{ borderColor: "var(--club-border)" }}>
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
+                  style={{ backgroundColor: i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "#ef4444" }}>
+                  {i + 1}
+                </span>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "var(--club-text-main)" }}>{b.player?.name || b.name || "—"}</p>
+                  {b.player?.team?.name && <p className="text-[10px]" style={{ color: "var(--club-text-muted)" }}>{b.player.team.name}</p>}
+                </div>
+              </div>
+              <span className="font-bold text-base text-red-500">{b.wickets || b.totalWickets || 0} <span className="text-xs font-normal opacity-60">wkts</span></span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
